@@ -13,13 +13,15 @@
  *  TRIGLOW :
  *  measure_Init() :
  */
+//assume the velocity of sound is between 331+0.6*T = 346 m/s (T=25) and 343 m/s (T=20)
 
 #define GAP 45
 #define SUCCESS_ZEROS 10
 
-#define TRIGHIGH  (PORTD |=  0b00110000)  // 將PD4跟PD5腳位設為HIGH
-#define TRIGLOW   (PORTD &= ~0b00110000)  // 將PD4跟PD5腳位設為LOW
-
+#define TRIGHIGH1  (PORTD |=  0b00100000)  // 將PD5腳位設為HIGH
+#define TRIGHIGH2  (PORTD |=  0b00010000)  // 將PD4腳位設為HIGH
+#define TRIGLOW1   (PORTD &= ~0b00100000)  // 將PD5腳位設為LOW
+#define TRIGLOW2   (PORTD &= ~0b00010000)  // 將PD4腳位設為LOW
 static volatile uint16_t overflowcounter;
 
 static volatile uint16_t Is_in_while_loop;
@@ -41,36 +43,61 @@ static inline void new_pulseIn_filter();
 /* 初始化TIMER1 */
 static inline void TIMER1_Init()
 {
-  TCCR1A = 0;
-  TCCR1B = 0x1;
-  TIMSK1 = 0b00000001;
+  noInterrupts();          // disable all interrupts
+  TCCR1A = 0;              // TCCR1A Reset
+  TCCR1B = 0;              // TCCR1B Reset
   TCNT1 = 0;
+   
+  TCCR1B |= (1 << CS10);    // no prescaler 
+  TIMSK1 |= (1 << TOIE1);   // enable timer overflow interrupt
+  
+  interrupts();             // enable all interrupts
 }
 
 /* 量測前將TCNT1跟overflowcounter歸零 */
-static inline void measure_Init()
+static inline void measure_Init1()
 {
   TCNT1 = 0;
   overflowcounter = 0;
   Is_in_while_loop = 1;
   US1_TIME = 0;
+  //US2_TIME = 0;
+}
+static inline void measure_Init2()
+{
+  TCNT1 = 0;
+  overflowcounter = 0;
+  Is_in_while_loop = 1;
+  //US1_TIME = 0;
   US2_TIME = 0;
 }
 
 /* 新的pulseIn，可同時量測兩個hc_sr05的脈波長 */
 static inline void new_pulseIn()
 {
-  TRIGHIGH;
+  TRIGHIGH1;
   delayMicroseconds(30);
-  TRIGLOW;
-  measure_Init();
+  TRIGLOW1;
+   measure_Init1();
   do {
     if(overflowcounter) {
       Is_in_while_loop = 0;
       break;
     }
   } while(1);
-  delay(GAP);
+  delay(30);
+  TRIGHIGH2;
+  delayMicroseconds(30);
+  TRIGLOW2;
+   measure_Init2();
+  //delayMicroseconds(250);
+  do {
+    if(overflowcounter) {
+      Is_in_while_loop = 0;
+      break;
+    }
+  } while(1);
+  delay(30);
 }
 
 static uint16_t US1_history; // 儲存連續0的數量

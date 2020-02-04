@@ -20,6 +20,7 @@ extern volatile uint16_t US2_TIME;
 unsigned long pretime=0;
 unsigned long interval=20000;
 int save_switch = 1;  // 1 for stop save data ;0 for start save data
+int button = 1;  // 1 for stop save data ;0 for start save data
 bool writing=false; 
 
 void setup() {
@@ -38,10 +39,11 @@ void setup() {
    delay(2000);
    */  
   rtc.begin();
+
  
   Serial.begin(115200);
   TIMER1_Init();
-  rtc.setTime(0, 0, 0);     // Set the time to 12:00:00 (24hr format)
+ // rtc.setTime(15, 58,0 );     // Set the time to 12:00:00 (24hr format)
   pinMode(9, OUTPUT);    //output reset
   pinMode(4, OUTPUT);    //trig2
   pinMode(5, OUTPUT);    //trig1 
@@ -52,13 +54,17 @@ void setup() {
   attachInterrupt(1, ISR_US2, FALLING);
 
   digitalWrite(9,HIGH);
+
+  delay(2000);
   ////////////////check SD card module//////////////////
   if (!SD.begin(chipSelect)) {
     Serial.println("Card failed, or not present");
+    delay(2000);
     // don't do anything more:
     return;
   }
   Serial.println("card initialized.");
+  delay(2000);
   //////////////////////////////////////////////////////
  
 }
@@ -77,15 +83,25 @@ void loop() {
     pretime=millis();
     digitalWrite(9,LOW);
     delay(100);
-    Serial.print("here");
+    //Serial.print("here");
     digitalWrite(9,HIGH);
+  } 
+  if(digitalRead(8)==0){
+    save_switch=!save_switch;
+    delay(200);
   }
-  save_switch = digitalRead(8); //read switch
+  
+  //save_switch = digitalRead(8); //read switch
                 //read US data
   //A_pulseIn_filter();
   //curtime=millis();
+  
   t=rtc.getTime();
-  //Serial.println(int(t.min));
+  Serial.print(int(t.hour));
+  Serial.print(":");
+  Serial.print(int(t.min));
+  Serial.print(":");
+  Serial.println(int(t.sec));
   //delay(1000);
   //print_Serial_Plotter_nofiltered();
   
@@ -109,10 +125,12 @@ void loop() {
           display.println(t.min);
           display.display(); */
           fileName=String(t.hour);
+          fileName+=String("_");
           fileName+=String(t.min);
+          fileName+=String("_");
+          fileName+=String(t.sec);
           fileName.concat(".txt");
           Serial.println(fileName);
-        
           }
           //Serial.println(int(t.min));
           //Serial.println(int(t.sec));
@@ -134,8 +152,12 @@ void loop() {
     if(writing==false){
        t=rtc.getTime();
        fileName=String(t.hour);
+       fileName+=String("_");
        fileName+=String(t.min);
+       fileName+=String("_");
+       fileName+=String("_");
        fileName+=String(t.sec);
+       
        fileName.concat(".txt");
        Serial.println(fileName);
     }

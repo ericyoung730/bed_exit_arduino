@@ -1,6 +1,7 @@
 #include <SoftwareSerial.h>
 #include "Timer.h"
 #include "bed_exit_alarm_TX.h"
+#include "databaseStruct.h"
 #include "DL_ln33.h"
 #include "new_pulseIn.h"
 #include "Direction_Detect.h"
@@ -8,26 +9,23 @@
 #include <Adafruit_SSD1306.h>  
 #define OLED_RESET -1  
 Adafruit_SSD1306 display(OLED_RESET);  
- 
+double feat[7] = {0};
+resultVector resultDistance[AC_NUMBER];
+const vector PROGMEM AC[AC_NUMBER] = {
+  {.DATABASE = {double(309.3392857),double(1457.714286),double(10065.50446),double(6.129464286),double(55.26339286),double(13.46875),double(4068068.261)}, .ClusterType = 1},
+  {.DATABASE = {double(825.7678571),double(2467.776786),double(9884.892857),double(36.67857143),double(23.33482143),double(132.4330357),double(2397701.219)}, .ClusterType = 1},
+  {.DATABASE = {double(1102.464286),double(1263.352679),double(9267.84375),double(-25.42857143),double(87.48660714),double(48.36160714),double(3884283.586)}, .ClusterType = 1},
+  {.DATABASE = {double(588.4375),double(4007.21875),double(12577.80357),double(6.165178571),double(21.38392857),double(20.09375),double(1479518.893)}, .ClusterType = 2},
+  {.DATABASE = {double(355.5178571),double(5049.919643),double(12048.26786),double(-1.330357143),double(30.23660714),double(15.07589286),double(1958619.103)}, .ClusterType = 2},
+  {.DATABASE = {double(424.25),double(4828.973214),double(12248.66964),double(-17.58482143),double(30.04464286),double(21.13839286),double(2962562.413)}, .ClusterType = 2},
+  {.DATABASE = {double(4909.017857),double(3415.321429),double(9043.330357),double(88.04017857),double(-311.5178571),double(-779.3839286),double(68966440.11)}, .ClusterType = 3},
+  {.DATABASE = {double(5291.607143),double(2670.169643),double(9021.026786),double(36.91071429),double(-293.4017857),double(-747.6071429),double(80769343.41)}, .ClusterType = 3},
+  {.DATABASE = {double(5528.3125),double(2899.5),double(7941.589286),double(-53.38839286),double(-312.8616071),double(-1027.745536),double(77302200.85)}, .ClusterType = 3},
+};
+int printAC = 0;
+int Election[AC_TYPE] = {0};
+int max = 0;
 long timer1=0;  
-static const unsigned char PROGMEM logo16_glcd_bmp[] =  
-{ B00000000, B11000000,  
-  B00000001, B11000000,  
-  B00000001, B11000000,  
-  B00000011, B11100000,  
-  B11110011, B11100000,  
-  B11111110, B11111000,  
-  B01111110, B11111111,  
-  B00110011, B10011111,  
-  B00011111, B11111100,  
-  B00001101, B01110000,  
-  B00011011, B10100000,  
-  B00111111, B11100000,  
-  B00111111, B11110000,  
-  B01111100, B11110000,  
-  B01110000, B01110000,  
-  B00000000, B00110000 };  
-  
 const unsigned char PROGMEM low_power [] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF0, 0x00, 0x00, 0x00,
@@ -66,7 +64,7 @@ int controlPin = 11;  //電晶體開關pin
 int analogValue = 0;  //A0讀值
 float voltageConnect = 0; //通路電壓
 int battery_state = 0; //電池狀態 3=高電量 2=中電量 1=低電量
-
+unsigned long US_time_count=0;
 bool reset_button=false;                  //flag about reset
 bool ir=false;                            //flag about ir
 bool us=false;                            //表示超音波偵測離床或沒離床
@@ -161,6 +159,7 @@ static inline void print_Get_Direction()
       break;
   }
 }
+
 //---------------------------------------------//
 
 //------------receive data from Bpart----------//
@@ -270,7 +269,7 @@ void setup() {
   attachInterrupt(1, &ISR_US2, FALLING);
   
   Serial.println("setup");
-  
+ 
   
   for(int i = 0; i<3; i++){
     ln33_transmit_register();
@@ -296,13 +295,19 @@ static inline void print_Serial_Plotter_nofiltered()
 {
   Serial.print(US1_TIME);
   Serial.print(",");
-  Serial.println(US2_TIME); 
+  Serial.print(US2_TIME); 
+  Serial.print(","); 
 //   dataString=String(US1_TIME);
 //    dataString += ",";
 //     dataString +=String(US2_TIME);
 }
 void loop() {
-  
+ if(digitalRead(speaker) == LOW)
+   {
+     digitalWrite(speaker,HIGH);
+     T.after(9200,callback);//讓警報維持一段時間
+     Serial.println("alarm3");
+   }
 unsigned long currentMillis = millis();
   if(currentMillis - previousMillis > interval) 
   {
@@ -312,7 +317,7 @@ unsigned long currentMillis = millis();
   }
   if(currentMillis - electime > 10000) 
   {
-    electricity();
+    //electricity();
      //ln33_transmit_register();
      //Serial.println("register");
      electime = currentMillis;
@@ -322,11 +327,15 @@ unsigned long currentMillis = millis();
   get_messenger();
   buttoncheck();
   //electricity();
+  //Serial.println(millis()-US_time_count) ;
+  //US_time_count = millis();
   new_pulseIn();
   new_pulseIn_filter();
-  print_Get_Direction();
+  //print_Get_Direction();
   //print_Serial_Plotter_nofiltered();
-  
+  max_filter();
+  US_diff();
+  US_slope();
  if(Bpart_data=="ir_trigger")
   { 
     Serial.println("send ir_trigger");
@@ -372,4 +381,52 @@ unsigned long currentMillis = millis();
       Serial.println("alarm2");
     }
  }
+
+ for(int i = 0;i < AC_NUMBER;i++){
+       
+        resultDistance[i].result = EulerDistance(feat, AC[i].DATABASE);
+        resultDistance[i].Type = AC[i].ClusterType;
+      }
+      bubbleSort(resultDistance);
+      // if have K value do KNN
+      //注意 K 最好是奇數,以免造成平手問題,導致傳出兩種數值
+      //讀取前K個短的距離的群集,並儲存票數
+      Election[0] = 0;
+      Election[1] = 0;
+      Election[2] = 0;
+      
+      for(int i = 0;i < K_OF_KNN;i++){
+        
+        switch(resultDistance[i].Type){
+          
+        case 1:
+          Election[0] = Election[0]+1;
+          break;
+        case 2:
+          Election[1] = Election[1]+1;
+          break;
+        case 3:
+          Election[2] = Election[2]+1;
+          break;
+          /*case 4:
+          Election[3]++;
+          break;*/
+        default:
+          break;
+        }
+      }
+      max = Election[0];
+      printAC = 1;
+      //找出最多票的群集No.
+      for(int i = 1;i < AC_TYPE;i++){
+        
+        if(Election[i] > max){
+          
+          max = Election[i];
+          printAC = i+1;    //RealTimeAC.ClusterType
+        }
+        
+      }
+      
+      Serial.println(printAC); 
 }
