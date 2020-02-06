@@ -19,7 +19,7 @@ extern volatile uint16_t US1_TIME;
 extern volatile uint16_t US2_TIME;
 unsigned long pretime=0;
 unsigned long interval=20000;
-int save_switch = 1;  // 1 for stop save data ;0 for start save data
+extern int save_switch = 1;  // 1 for stop save data ;0 for start save data
 int button = 1;  // 1 for stop save data ;0 for start save data
 bool writing=false; 
 
@@ -70,9 +70,10 @@ void setup() {
 }
 static inline void print_Serial_Plotter_nofiltered()
 {
-  Serial.print(US1_TIME);
+  /*Serial.print(US1_TIME);
   Serial.print(",");
   Serial.print(US2_TIME); 
+  Serial.print(",");*/
    dataString=String(US1_TIME);
     dataString += ",";
      dataString +=String(US2_TIME);
@@ -97,16 +98,20 @@ void loop() {
   //curtime=millis();
   
   t=rtc.getTime();
-  Serial.print(int(t.hour));
+ /* Serial.print(int(t.hour));
   Serial.print(":");
   Serial.print(int(t.min));
   Serial.print(":");
-  Serial.println(int(t.sec));
+  Serial.println(int(t.sec));*/
   //delay(1000);
   //print_Serial_Plotter_nofiltered();
-  
+  if(actionEndflag==1)
+  {
+    save_switch=1;
+  }
  if(save_switch){
   writing=false;
+  actionEndflag=0;
  }  
  else if(int(t.min)%10==0){
       if (int(t.sec)==0){
@@ -140,6 +145,9 @@ void loop() {
       writing=true;
       File dataFile = SD.open(Filename, FILE_WRITE);
       new_pulseIn();
+      max_filter();
+      US_diff();
+      US_slope();
       print_Serial_Plotter_nofiltered();
       if (dataFile) {
           dataFile.println(dataString);
@@ -167,6 +175,9 @@ void loop() {
     File dataFile = SD.open(Filename, FILE_WRITE);
     new_pulseIn();
     print_Serial_Plotter_nofiltered();
+    max_filter();
+    US_diff();
+    US_slope();
     if (dataFile) {
        dataFile.println(dataString);
        dataFile.close();
@@ -174,5 +185,5 @@ void loop() {
        //Serial.println(dataString);
     }
  }
-  Serial.println();
+  //Serial.println();
 }
