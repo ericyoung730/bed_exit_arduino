@@ -23,6 +23,9 @@
 #define TRIGHIGH2  (PORTD |=  0b00010000)  // 將PD4腳位設為HIGH
 #define TRIGLOW1   (PORTD &= ~0b00100000)  // 將PD5腳位設為LOW
 #define TRIGLOW2   (PORTD &= ~0b00010000)  // 將PD4腳位設為LOW
+
+extern float feat[7];
+
 int actionEndflag=0;
 static volatile uint16_t overflowcounter;
 uint8_t zero_cross_number=2;
@@ -262,20 +265,28 @@ void check_action_end()
     Serial.println(",");
     action_flag=0;
     actionEndflag=1;
-    Serial.print("zero_cross_number : ");
+    Serial.print(F("zero_cross_number : "));
     Serial.println(zero_cross_number);
-    Serial.print("area_ratio : ");
+    Serial.print(F("area_ratio : "));
     Serial.println(area_ratio);
-    Serial.print("sum_slope : ");
+    Serial.print(F("sum_slope : "));
     Serial.println(sum_slope);
-    Serial.print("action_length : ");
+    Serial.print(F("action_length : "));
     Serial.println(action_length);
-    Serial.print("action_length_US1/action_length : ");
+    Serial.print(F("action_length_US1/action_length : "));
     Serial.println(action_length_US1/action_length);
-    Serial.print("action_length_US2/action_length : ");
+    Serial.print(F("action_length_US2/action_length : "));
     Serial.println(action_length_US2/action_length);
-    Serial.print("action_length_both/action_length : ");
+    Serial.print(F("action_length_both/action_length : "));
     Serial.println(action_length_both/action_length);
+    feat[0]=zero_cross_number;
+    feat[1]=area_ratio*100;
+    feat[2]=sum_slope;
+    feat[3]=action_length*100;
+    feat[4]=(action_length_US1/action_length)*100;
+    feat[5]=(action_length_US2/action_length)*100;
+    feat[6]=(action_length_both/action_length)*100;
+    
     //Serial.println("action end ! ");
     action_plot=1;
     action_end_number=0;
@@ -353,7 +364,6 @@ void inline static zero_cross_count(float US_slope_normal)
 }
 static inline void US_slope()
 {
-  
   slope[slope_order]=US_TIME_diff;
   
   if(slope_order==Moving_average_m-1){
@@ -365,52 +375,52 @@ static inline void US_slope()
        slope[i]=slope[i+1];
      }
     US_diff_slope_normal=US_TIME_diff_normal-US_slope_normal;
-    Serial.print("@");
-    Serial.print(":");
+    Serial.print(F("@"));
+    Serial.print(F(":"));
     Serial.print(US1_TIME_filtered);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(US2_TIME_filtered);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(US_TIME_diff);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(US_TIME_diff_normal);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(US_slope_normal);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(US_diff_slope_normal);
     US_diff_slope_normal*=100;
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(slope_sum);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(slope_avg);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(US_diff_slope_normal);
-    Serial.print(",");
+    Serial.print(F(","));
     
     if(US_diff_slope_normal>5 || US_diff_slope_normal<(-5))
     US_area=slope_avg/65535.0;
     else
     US_area=0;
     Serial.print(slope_avg/65535.0);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(action_plot);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(US_area);
-    Serial.print(",");
+    Serial.print(F(","));
 //   Serial.print(US_area_psum);
 //  Serial.print(",");
 //  Serial.print(US_area_nsum);
 //  Serial.print(",");
    Serial.print(action_length);
-   Serial.print(",");
+   Serial.print(F(","));
    Serial.print(zero_cross_number);
-   Serial.print(",");
+   Serial.print(F(","));
    Serial.print(sum_slope);
-   Serial.print(",");
+   Serial.print(F(","));
    Serial.print(action_length_US1/action_length);
-   Serial.print(",");
+   Serial.print(F(","));
    Serial.print(action_length_US2/action_length);
-   Serial.print(",");
+   Serial.print(F(","));
    Serial.println(area_ratio);
   }
   else{
