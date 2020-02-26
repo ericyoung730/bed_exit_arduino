@@ -16,7 +16,17 @@ float EulerDistance(float v1[],  float v2[]){
 	}
 	return powerSum;	 
 }
-
+float cityblock(float v1[],  float v2[]){
+  
+  int i = 0;
+  float citySum = 0;
+  for(i = 0;i < FEATURE_QUANTITY;i++){
+    
+    citySum =(v1[i] - v2[i]) + citySum;
+    
+  }
+  return citySum;   
+}
 
 
 
@@ -28,8 +38,8 @@ float EulerDistance(float v1[],  float v2[]){
 void bubbleSort(resultVector resultDistance[]){
 	int i,j;
 	resultVector temp;
-	for(i = 0;i < AC_NUMBER - 1;i++){
-		for(j = 0;j < AC_NUMBER - 1 - i;j++){
+	for(i = 0;i < K_OF_KNN ;i++){
+		for(j = 0;j < K_OF_KNN - i;j++){
 			
 			if(resultDistance[j].result > resultDistance[j+1].result){
 				temp = resultDistance[j];

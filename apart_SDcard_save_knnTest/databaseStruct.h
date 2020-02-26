@@ -5,7 +5,7 @@
 
 
 #define FEATURE_QUANTITY 7
-#define AC_NUMBER 122//for eample
+#define AC_NUMBER 258//for eample
 #define AC_TYPE 3
 
 #define K_OF_KNN 7  //odd number is much better
