@@ -1,10 +1,4 @@
-/*#include <Wire.h>  
-//#include <Adafruit_GFX.h>  
-#include <Adafruit_SSD1306.h>  
-#define OLED_RESET -1  
-Adafruit_SSD1306 display(OLED_RESET);  
-  */
-  #include <avr/pgmspace.h>
+#include <avr/pgmspace.h>
 #include "new_pulseIn.h"
 #include "Direction_Detect.h"
 #include "databaseStruct.h"
@@ -539,7 +533,8 @@ const byte lable[AC_NUMBER] PROGMEM={
 byte printAC = 0;
 byte Election[AC_TYPE] = {0};
 int max = 0;
-
+bool action_flag=0;
+bool action_end_flag=0;
 const int chipSelect = 10; //CS = 10
 String dataString = "";
 String fileName = "";
@@ -552,23 +547,7 @@ int button = 1;  // 1 for stop save data ;0 for start save data
 bool writing=false; 
 
 void setup() {
-   /*if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
-   // Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
-  }
-  // init done  
-  display.setTextColor(WHITE);  
-  // Show image buffer on the display hardware.  
-  // Since the buffer is intialized with an Adafruit splashscreen  
-  // internally, this will display the splashscreen.  
-  display.display();  
- 
-  // Clear the buffer.  
-   delay(2000);
-   */  
   rtc.begin();
-
- 
   Serial.begin(115200);
   TIMER1_Init();
  // rtc.setTime(15, 58,0 );     // Set the time to 12:00:00 (24hr format)
@@ -605,7 +584,7 @@ void setup() {
 }
 static inline void print_Serial_Plotter_nofiltered()
 {
-  /*Serial.print(US1_TIME);
+ /* Serial.print(US1_TIME);
   Serial.print(",");
   Serial.print(US2_TIME); 
   Serial.print(",");*/
@@ -722,19 +701,6 @@ void loop() {
  else if(int(t.min)%10==0){
       if (int(t.sec)==0){
           t=rtc.getTime();
-    /*      display.clearDisplay(); 
-          display.setTextSize(2);             // Normal 1:1 pixel scale
-          display.setTextColor(WHITE);        // Draw white text
-          display.setCursor(0,0);             // Start at top-left corner
-          display.println(F("Work!"));
-          display.display(); 
-          delay(2000);*/
-      /*      display.clearDisplay(); 
-          display.setTextSize(2);             // Normal 1:1 pixel scale
-          display.setTextColor(WHITE);        // Draw white text
-          display.setCursor(0,0);             // Start at top-left corner
-          display.println(t.min);
-          display.display(); */
           fileName=String(t.hour);
           fileName+=String("_");
           fileName+=String(t.min);
@@ -750,11 +716,37 @@ void loop() {
       fileName.toCharArray(Filename,sizeof(Filename));
       writing=true;
       File dataFile = SD.open(Filename, FILE_WRITE);
-      new_pulseIn();
-      max_filter();
-      US_diff();
-      US_slope();
-      print_Serial_Plotter_nofiltered();
+    uint16_t US1_TIME_filtered=0;
+    uint16_t US2_TIME_filtered=0;
+    int US_TIME_diff=0;
+    long movingavg_avg=0;
+    float movingavg_avg_normalize=0;
+    float US_TIME_diff_normal=0;
+    new_pulseIn();
+    print_Serial_Plotter_nofiltered();
+    US1_TIME_filtered=max1_filter(US1_TIME);
+    US2_TIME_filtered=max2_filter(US2_TIME);
+    US_TIME_diff=US_diff(US1_TIME_filtered,US2_TIME_filtered);
+    
+    movingavg_avg=US_movingavg(US_TIME_diff);
+    
+    if(action_flag==0){
+      if(check_act(movingavg_avg)){
+      action_flag=1;
+      }
+    }
+    else if(action_flag){
+      US_TIME_diff_normal=US_normalize(US_TIME_diff);
+      movingavg_avg_normalize=US_normalize(movingavg_avg);
+      length_cal(US1_TIME_filtered,US2_TIME_filtered);
+      zero_cross_count(movingavg_avg_normalize);
+      area_cal(US_TIME_diff_normal,movingavg_avg_normalize);
+      if(check_end(movingavg_avg)){
+        features_put_and_reset();
+        action_flag=0;
+        actionEndflag=1;
+      }
+    }
       if (dataFile) {
           dataFile.println(dataString);
           dataFile.close();
@@ -779,19 +771,57 @@ void loop() {
     fileName.toCharArray(Filename,sizeof(Filename));
     writing=true;
     File dataFile = SD.open(Filename, FILE_WRITE);
+    uint16_t US1_TIME_filtered=0;
+    uint16_t US2_TIME_filtered=0;
+    int US_TIME_diff=0;
+    long movingavg_avg=0;
+    float movingavg_avg_normalize=0;
+    float US_TIME_diff_normal=0;
     new_pulseIn();
     print_Serial_Plotter_nofiltered();
-    max_filter();
-    US_diff();
-    US_slope();
+    US1_TIME_filtered=max1_filter(US1_TIME);
+    US2_TIME_filtered=max2_filter(US2_TIME);
+   /* Serial.print(US1_TIME_filtered);
+    Serial.print(",");
+    Serial.print(US2_TIME_filtered); 
+    Serial.print(",");*/
+    US_TIME_diff=US_diff(US1_TIME_filtered,US2_TIME_filtered);
+    /*Serial.print(US_TIME_diff);
+    Serial.print(",");*/
+    movingavg_avg=US_movingavg(US_TIME_diff);
+    /*Serial.print(movingavg_avg); 
+    Serial.println();*/
+    if(action_flag==0){
+      if(check_act(movingavg_avg)){
+      action_flag=1;
+      }
+    }
+    else if(action_flag){
+      US_TIME_diff_normal=US_normalize(US_TIME_diff);
+      movingavg_avg_normalize=US_normalize(movingavg_avg);
+      Serial.print(US_TIME_diff_normal);
+      Serial.print(",");
+      Serial.print(movingavg_avg_normalize);
+      Serial.print(",");
+      Serial.println();
+      length_cal(US1_TIME_filtered,US2_TIME_filtered);
+      zero_cross_count(movingavg_avg_normalize);
+      area_cal(US_TIME_diff_normal,movingavg_avg_normalize);
+      if(check_end(movingavg_avg)){
+        action_flag=0;
+        features_put_and_reset();
+        actionEndflag=1;
+      }
+    }
     if(actionEndflag==1){
       for(int i=0;i<7;i++){
      //   feat[i]=knn_feature[i];
         Serial.print(feat[i]);
         Serial.print(" ");
       }
+      Serial.println();
      knnElection();
-      
+      actionEndflag=0;
     }
     
     if (dataFile) {
@@ -801,5 +831,5 @@ void loop() {
        //Serial.println(dataString);
     }
  }
-  //Serial.println();
+  
 }
